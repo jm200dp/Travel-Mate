@@ -7,6 +7,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -28,8 +30,14 @@ import static utils.Constants.API_LINK_V2;
 class LoginPresenter {
     private LoginView mView;
 
+    private List<String> mResponses = new ArrayList<>();
+
     public void bind(LoginView view) {
         this.mView = view;
+    }
+
+    public List<String> responses() {
+        return this.mResponses;
     }
 
     public void unbind() {
@@ -122,6 +130,64 @@ class LoginPresenter {
      * @param email user's email id
      * @param pass  password user entered
      */
+
+    public void ok_login(final String email, String pass, final Handler mhandler, String url) {
+
+        //mView.showLoadingDialog();
+
+        String uri = url;
+        Log.v("EXECUTING", uri);
+
+        //Set up client
+        OkHttpClient client = new OkHttpClient();
+
+        RequestBody requestBody = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("username", email)
+                .addFormDataPart("password", pass)
+                .build();
+
+        //Execute request
+        Request request = new Request.Builder()
+                .url(uri)
+                .post(requestBody)
+                .build();
+        //Setup callback
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                mhandler.post(() -> {
+                    if (mView != null) {
+                        mView.showError();
+                        mView.dismissLoadingDialog();
+                    }
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                final String res = Objects.requireNonNull(response.body()).string();
+                mResponses.add(res);
+                mhandler.post(() -> {
+                            try {
+                                if (response.isSuccessful()) {
+                                    JSONObject responeJsonObject = new JSONObject(res);
+                                    String token = responeJsonObject.getString("token");
+                                    mView.rememberUserInfo(token, email);
+                                    mView.startMainActivity();
+                                } else {
+                                    mView.showError();
+                                }
+                                mView.dismissLoadingDialog();
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                );
+            }
+        });
+    }
+
     public void ok_login(final String email, String pass, final Handler mhandler) {
 
         mView.showLoadingDialog();

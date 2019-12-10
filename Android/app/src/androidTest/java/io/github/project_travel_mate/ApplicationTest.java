@@ -23,4 +23,8 @@ public class ApplicationTest {
 
         assertEquals("io.github.project_travel_mate", appContext.getPackageName());
     }
+
+    public void profiler() {
+
+    }
 }
